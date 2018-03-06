@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -69,9 +67,12 @@ namespace Http2.WinHttpHandler
             using (var server = new HttpListener())
             {
                 var listenPrefix = args[0];
+                var responseDelay = TimeSpan.FromMilliseconds(int.Parse(args[1]));
                 server.Prefixes.Add(listenPrefix);
                 server.Start();
+                Console.Out.WriteLine($"Serving at {listenPrefix}");
 
+                var reqId = 0;
                 var ctxTask = server.GetContextAsync();
                 while (!cts.IsCancellationRequested)
                 {
@@ -79,24 +80,29 @@ namespace Http2.WinHttpHandler
                     var completed = Task.WhenAny(ctxTask, delay).GetAwaiter().GetResult();
                     if (completed == ctxTask)
                     {
-                        ThreadPool.QueueUserWorkItem(
-                            ctx => ProcessContext((HttpListenerContext) ctx),
-                            ctxTask.Result);
+                        ProcessContextAsync(ctxTask.Result, responseDelay, reqId);
+                        reqId++;
                         ctxTask = server.GetContextAsync();
                     }
                 }
-                Console.WriteLine("Cancelling server...");
+                Console.Out.WriteLine("Cancelling server...");
             }
         }
 
-        private static void ProcessContext(HttpListenerContext ctxTaskResult)
+        private static async Task ProcessContextAsync(HttpListenerContext ctx, TimeSpan delay, int reqId)
         {
-            ctxTaskResult.Response.StatusCode = 200;
-            ctxTaskResult.Response.Close();
+            Console.Out.WriteLine($"{reqId}: received");
+            await Task.Delay(delay);
+            ctx.Response.StatusCode = 200;
+            ctx.Response.Close();
+            Console.Out.WriteLine($"{reqId}: handled");
         }
 
         private static void RunClient(string[] args)
         {
+            // override default limit of two tcp connections per endpoint
+            ServicePointManager.DefaultConnectionLimit = 10 * 1000;
+
             using (var httpClient = new HttpClient())
             {
                 var url = args[0];
@@ -115,12 +121,12 @@ namespace Http2.WinHttpHandler
                     var completed = Task.WhenAny(delay, allTasks).GetAwaiter().GetResult();
                     if (completed == allTasks)
                     {
-                        Console.WriteLine("All tasks finished!");
+                        Console.Out.WriteLine("All tasks finished!");
                         break;
                     }
                 }
                 
-                Console.WriteLine("Cancelling client...");
+                Console.Out.WriteLine("Cancelling client...");
             }
         }
 
@@ -129,15 +135,16 @@ namespace Http2.WinHttpHandler
             var sw = Stopwatch.StartNew();
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             var result = await httpClient.SendAsync(request);
+            result.Dispose();
             var elapsed = sw.Elapsed;
-            Console.WriteLine($"{idx}: code {(int) result.StatusCode:D3} in {elapsed.TotalSeconds:00}.{elapsed.Milliseconds:D3}");
+            Console.Out.WriteLine($"{idx}: code {(int) result.StatusCode:D3} in {elapsed.TotalSeconds:00}.{elapsed.Milliseconds:D3}");
         }
 
         private static void ShowHelp()
         {
             Console.Out.WriteLine(
 @"Usage: Http2.WinHttpHandler.exe <server|client> [args...]
-    server <listen prefix>
+    server <listen prefix> <response delay ms>
     client <url> <parallelism>");
         }
 
