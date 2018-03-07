@@ -72,6 +72,7 @@ namespace Http2.WinHttpHandler
                 server.Start();
                 Console.Out.WriteLine($"Serving at {listenPrefix}");
 
+                var startTime = DateTime.UtcNow;
                 var reqId = 0;
                 var ctxTask = server.GetContextAsync();
                 while (!cts.IsCancellationRequested)
@@ -80,7 +81,7 @@ namespace Http2.WinHttpHandler
                     var completed = Task.WhenAny(ctxTask, delay).GetAwaiter().GetResult();
                     if (completed == ctxTask)
                     {
-                        ProcessContextAsync(ctxTask.Result, responseDelay, reqId);
+                        ProcessContextAsync(ctxTask.Result, responseDelay, reqId, startTime);
                         reqId++;
                         ctxTask = server.GetContextAsync();
                     }
@@ -89,22 +90,30 @@ namespace Http2.WinHttpHandler
             }
         }
 
-        private static async Task ProcessContextAsync(HttpListenerContext ctx, TimeSpan delay, int reqId)
+        private static async Task ProcessContextAsync(HttpListenerContext ctx, TimeSpan delay, int reqId, DateTime startTime)
         {
-            Console.Out.WriteLine($"{reqId}: received");
+            Console.Out.WriteLine($"{reqId}: received at {FormatTimeSpan(DateTime.UtcNow - startTime)}");
             await Task.Delay(delay);
             ctx.Response.StatusCode = 200;
             ctx.Response.Close();
-            Console.Out.WriteLine($"{reqId}: handled");
+            Console.Out.WriteLine($"{reqId}: handled at {FormatTimeSpan(DateTime.UtcNow - startTime)}");
+        }
+
+        private static string FormatTimeSpan(TimeSpan timeSpan)
+        {
+            return $"{timeSpan.TotalSeconds:####0}.{timeSpan.Milliseconds:D3}";
         }
 
         private static void RunClient(string[] args)
         {
             // override default limit of two tcp connections per endpoint
             ServicePointManager.DefaultConnectionLimit = 10 * 1000;
+            // let this code work with self-signed untrusted certs
+            ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, errors) => true;
 
             using (var httpClient = new HttpClient())
             {
+                
                 var url = args[0];
                 var parallelism = int.Parse(args[1]);
                 var tasks = new Task[parallelism];
@@ -132,12 +141,20 @@ namespace Http2.WinHttpHandler
 
         private static async Task SendRequest(HttpClient httpClient, string url, int idx)
         {
-            var sw = Stopwatch.StartNew();
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            var result = await httpClient.SendAsync(request);
-            result.Dispose();
-            var elapsed = sw.Elapsed;
-            Console.Out.WriteLine($"{idx}: code {(int) result.StatusCode:D3} in {elapsed.TotalSeconds:00}.{elapsed.Milliseconds:D3}");
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                var result = await httpClient.SendAsync(request);
+                result.Dispose();
+                var elapsed = sw.Elapsed;
+                Console.Out.WriteLine(
+                    $"{idx}: code {(int) result.StatusCode:D3} in {FormatTimeSpan(elapsed)}");
+            }
+            catch (Exception ex)
+            {
+                Console.Out.WriteLine($"{idx}: failed with {ex}");
+            }
         }
 
         private static void ShowHelp()
