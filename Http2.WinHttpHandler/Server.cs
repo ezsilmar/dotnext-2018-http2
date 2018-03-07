@@ -40,11 +40,11 @@ namespace Http2.WinHttpHandler
 
         private static async Task ProcessContextAsync(HttpListenerContext ctx, TimeSpan delay, int reqId, DateTime startTime)
         {
-            Console.Out.WriteLine($"{reqId}: received at {Helpers.FormatTimeSpan(DateTime.UtcNow - startTime)}. Req version: {ctx.Request.ProtocolVersion}");
+            Console.Out.WriteLine($"{reqId:D4}: received at {Helpers.FormatTimeSpan(DateTime.UtcNow - startTime)}. Req version: {ctx.Request.ProtocolVersion}");
             await Task.Delay(delay);
             ctx.Response.StatusCode = 200;
             ctx.Response.Close();
-            Console.Out.WriteLine($"{reqId}: handled at {Helpers.FormatTimeSpan(DateTime.UtcNow - startTime)}. Resp version: {ctx.Response.ProtocolVersion}");
+            Console.Out.WriteLine($"{reqId:D4}: handled at {Helpers.FormatTimeSpan(DateTime.UtcNow - startTime)}. Resp version: {ctx.Response.ProtocolVersion}");
         }
 
         public void Dispose()

@@ -49,11 +49,11 @@ namespace Http2.WinHttpHandler
                 result.Dispose();
                 var elapsed = sw.Elapsed;
                 Console.Out.WriteLine(
-                    $"{idx}: code {(int)result.StatusCode:D3} in {Helpers.FormatTimeSpan(elapsed)}, version {result.Version}");
+                    $"{idx:D4}: code {(int)result.StatusCode:D3} in {Helpers.FormatTimeSpan(elapsed)}, version {result.Version}");
             }
             catch (Exception ex)
             {
-                Console.Out.WriteLine($"{idx}: failed with {ex}");
+                Console.Out.WriteLine($"{idx:D4}: failed with {ex}");
             }
         }
 

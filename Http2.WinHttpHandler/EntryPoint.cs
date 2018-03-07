@@ -17,18 +17,18 @@ namespace Http2.WinHttpHandler
             SetupCtrlCHandler();
 
             var mode = args[0];
-            args = args.Skip(1).ToArray();
-            var maxConnectionsPerServer = 10 * 1000;
+            args = ShiftArgs(args, 1);
 
             try
             {
                 switch (mode)
                 {
-                    case "client11":
-                        RunClient(new ClientHttp11(maxConnectionsPerServer), args);
-                        break;
-                    case "client2":
-                        RunClient(new ClientHttp2(maxConnectionsPerServer), args);
+                    case "client":
+                        var protoVersion = args[0];
+                        var maxConnectionsPerServer = int.Parse(args[1]);
+                        args = ShiftArgs(args, 2);
+                        var client = CreateClient(protoVersion, maxConnectionsPerServer);
+                        RunClient(client, args);
                         break;
                     case "server":
                         RunServer(args);
@@ -46,6 +46,29 @@ namespace Http2.WinHttpHandler
                 Console.Out.WriteLine();
                 ShowHelp();
             }
+        }
+
+        private static Client CreateClient(string protoVersion, int maxConnectionsPerServer)
+        {
+            Client client;
+            switch (protoVersion)
+            {
+                case "11":
+                    client = new ClientHttp11(maxConnectionsPerServer);
+                    break;
+                case "2":
+                    client = new ClientHttp2(maxConnectionsPerServer);
+                    break;
+                default:
+                    throw new ArgumentException($"Protocol version should be 11 or 2, but was '{protoVersion}'");
+            }
+
+            return client;
+        }
+
+        private static string[] ShiftArgs(string[] args, int count = 1)
+        {
+            return args.Skip(count).ToArray();
         }
 
         private static void SetupCtrlCHandler()
@@ -87,8 +110,8 @@ namespace Http2.WinHttpHandler
             Console.Out.WriteLine(
 @"Usage: Http2.WinHttpHandler.exe <server|client> [args...]
     server <listen prefix> <response delay ms>
-    client11 <url> <parallelism>
-    client2 <url> <parallelism>");
+    client 11 <maxConnectionsPerServer> <url> <parallelism>
+    client 2 <maxConnectionsPerServer> <url> <parallelism>");
         }
 
         private static readonly CancellationTokenSource cts = new CancellationTokenSource();
