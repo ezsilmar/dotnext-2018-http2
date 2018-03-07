@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Http2.WinHttpHandler
 {
@@ -22,16 +18,17 @@ namespace Http2.WinHttpHandler
 
             var mode = args[0];
             args = args.Skip(1).ToArray();
+            var maxConnectionsPerServer = 10 * 1000;
 
             try
             {
                 switch (mode)
                 {
-                    case "client":
-                        RunClientHttp11(args);
+                    case "client11":
+                        RunClient(new ClientHttp11(maxConnectionsPerServer), args);
                         break;
-                    case "client_h2":
-                        RunClientHttp2(args);
+                    case "client2":
+                        RunClient(new ClientHttp2(maxConnectionsPerServer), args);
                         break;
                     case "server":
                         RunServer(args);
@@ -49,11 +46,6 @@ namespace Http2.WinHttpHandler
                 Console.Out.WriteLine();
                 ShowHelp();
             }
-        }
-
-        private static void RunClientHttp2(string[] args)
-        {
-            throw new NotImplementedException();
         }
 
         private static void SetupCtrlCHandler()
@@ -80,55 +72,13 @@ namespace Http2.WinHttpHandler
             }
         }
 
-        private static void RunClientHttp11(string[] args)
+        private static void RunClient(Client client, string[] args)
         {
-            // override default limit of two tcp connections per endpoint
-            ServicePointManager.DefaultConnectionLimit = 10 * 1000;
-            // let this code work with self-signed untrusted certs
-            ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, errors) => true;
-
-            using (var httpClient = new HttpClient())
+            using (client)
             {
                 var url = args[0];
                 var parallelism = int.Parse(args[1]);
-                var tasks = new Task[parallelism];
-
-                for (var i = 0; i < parallelism; i++)
-                {
-                    tasks[i] = SendRequest(httpClient, url, i);
-                }
-
-                var allTasks = Task.WhenAll(tasks);
-                while (!cts.IsCancellationRequested)
-                {
-                    var delay = Task.Delay(50);
-                    var completed = Task.WhenAny(delay, allTasks).GetAwaiter().GetResult();
-                    if (completed == allTasks)
-                    {
-                        Console.Out.WriteLine("All tasks finished!");
-                        break;
-                    }
-                }
-                
-                Console.Out.WriteLine("Cancelling client...");
-            }
-        }
-
-        private static async Task SendRequest(HttpClient httpClient, string url, int idx)
-        {
-            try
-            {
-                var sw = Stopwatch.StartNew();
-                var request = new HttpRequestMessage(HttpMethod.Get, url);
-                var result = await httpClient.SendAsync(request);
-                result.Dispose();
-                var elapsed = sw.Elapsed;
-                Console.Out.WriteLine(
-                    $"{idx}: code {(int) result.StatusCode:D3} in {Helpers.FormatTimeSpan(elapsed)}");
-            }
-            catch (Exception ex)
-            {
-                Console.Out.WriteLine($"{idx}: failed with {ex}");
+                client.Send(url, parallelism, cts.Token);
             }
         }
 
@@ -137,7 +87,8 @@ namespace Http2.WinHttpHandler
             Console.Out.WriteLine(
 @"Usage: Http2.WinHttpHandler.exe <server|client> [args...]
     server <listen prefix> <response delay ms>
-    client <url> <parallelism>");
+    client11 <url> <parallelism>
+    client2 <url> <parallelism>");
         }
 
         private static readonly CancellationTokenSource cts = new CancellationTokenSource();
