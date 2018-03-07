@@ -49,7 +49,7 @@ namespace Http2.WinHttpHandler
                 result.Dispose();
                 var elapsed = sw.Elapsed;
                 Console.Out.WriteLine(
-                    $"{idx}: code {(int)result.StatusCode:D3} in {Helpers.FormatTimeSpan(elapsed)}");
+                    $"{idx}: code {(int)result.StatusCode:D3} in {Helpers.FormatTimeSpan(elapsed)}, version {result.Version}");
             }
             catch (Exception ex)
             {
