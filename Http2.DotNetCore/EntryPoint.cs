@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Threading;
 
-namespace Http2.WinHttpHandler
+namespace Http2.DotNetCore
 {
     class EntryPoint
     {
@@ -53,11 +53,13 @@ namespace Http2.WinHttpHandler
             switch (protoVersion)
             {
                 case "11":
-                    return new ClientHttp11(maxConnectionsPerServer);
+                    return new ClientDotNetCore(maxConnectionsPerServer, new Version(1, 1));
                 case "2":
-                    return new ClientHttp2(maxConnectionsPerServer);
+                    return new ClientDotNetCore(maxConnectionsPerServer, new Version(2, 0));
+                case "default":
+                    return new ClientDotNetCore(maxConnectionsPerServer, null);
                 default:
-                    throw new ArgumentException($"Protocol version should be 11 or 2, but was '{protoVersion}'");
+                    throw new ArgumentException($"Protocol version should be 11, 2 or default, but was '{protoVersion}'");
             }
         }
 
@@ -96,6 +98,7 @@ namespace Http2.WinHttpHandler
             {
                 var url = args[0];
                 var parallelism = int.Parse(args[1]);
+                client.Warmup(url, cts.Token);
                 client.Send(url, parallelism, cts.Token);
             }
         }
@@ -103,10 +106,11 @@ namespace Http2.WinHttpHandler
         private static void ShowHelp()
         {
             Console.Out.WriteLine(
-@"Usage: Http2.WinHttpHandler.exe <server|client> [args...]
+@"Usage: Http2.DotNetCore.exe <server|client> [args...]
     server <listen prefix> <response delay ms>
     client 11 <maxConnectionsPerServer> <url> <parallelism>
-    client 2 <maxConnectionsPerServer> <url> <parallelism>");
+    client 2 <maxConnectionsPerServer> <url> <parallelism>
+    client default <maxConnectionsPerServer> <url> <parallelism>");
         }
 
         private static readonly CancellationTokenSource cts = new CancellationTokenSource();

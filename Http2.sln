@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.26730.15
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Http2.WinHttpHandler", "Http2.WinHttpHandler\Http2.WinHttpHandler.csproj", "{BE4A9600-6B3F-4341-A07F-B8E29B47B0A0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Http2.DotNetCore", "Http2.DotNetCore\Http2.DotNetCore.csproj", "{927167FA-1F58-4E7F-B84A-11CF799DEE3F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{BE4A9600-6B3F-4341-A07F-B8E29B47B0A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BE4A9600-6B3F-4341-A07F-B8E29B47B0A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BE4A9600-6B3F-4341-A07F-B8E29B47B0A0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{927167FA-1F58-4E7F-B84A-11CF799DEE3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{927167FA-1F58-4E7F-B84A-11CF799DEE3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{927167FA-1F58-4E7F-B84A-11CF799DEE3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{927167FA-1F58-4E7F-B84A-11CF799DEE3F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
