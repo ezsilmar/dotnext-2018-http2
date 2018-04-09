@@ -15,6 +15,10 @@ namespace LongPollTest
         private readonly Stopwatch sw = new Stopwatch();
         private readonly Random rnd = new Random();
 
+        public int LongPollsSent { get; private set; }
+        public int LongPollsReceivedOk { get; private set; }
+        public int LongPollErrors { get; private set; }
+
         public LongPollRequest(
             HttpClient client,
             CancellationToken token,
@@ -27,15 +31,18 @@ namespace LongPollTest
 
         public async Task BeginLongPolling()
         {
-            var lpIdx = 0;
             while (!token.IsCancellationRequested)
             {
-                lpIdx++;
-                await SendOne(lpIdx);
+                LongPollsSent++;
+                var result = await SendOne(LongPollsSent);
+                if (result != null && result.Value == HttpStatusCode.OK)
+                    LongPollsReceivedOk++;
+                else
+                    LongPollErrors++;
             }
         }
 
-        public async Task SendOne(int idx)
+        public async Task<HttpStatusCode?> SendOne(int idx)
         {
             using (var httpRequest = requestFactory())
             {
@@ -49,6 +56,7 @@ namespace LongPollTest
                     {
                         Log.Write(
                             $"{idx} elapsed {sw.Elapsed.TotalMilliseconds:######.0} ms status {response.StatusCode}");
+                        return response.StatusCode;
                     }
                 }
                 catch (Exception ex)
@@ -56,6 +64,7 @@ namespace LongPollTest
                     if (ex is OperationCanceledException)
                         throw;
                     Log.Write(ex.ToString());
+                    return null;
                 }
             }
         }

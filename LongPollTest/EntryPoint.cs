@@ -80,6 +80,9 @@ namespace LongPollTest
                 case "2":
                     client = new Client20(url);
                     break;
+                case "2p":
+                    client = new Client20Pool(url);
+                    break;
                 default:
                     throw new ArgumentException($"unknown proto version '{protoVersion}'");
             }
