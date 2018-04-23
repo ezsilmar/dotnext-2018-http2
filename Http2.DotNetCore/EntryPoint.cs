@@ -1,5 +1,9 @@
 ﻿using System;
 using System.Linq;
+using System.Net.Cache;
+using System.Net.Http;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Http2.DotNetCore
@@ -32,6 +36,9 @@ namespace Http2.DotNetCore
                         break;
                     case "server":
                         RunServer(args);
+                        break;
+                    case "curl":
+                        PrintCurlInfo();
                         break;
                     default:
                         ShowHelp();
@@ -103,6 +110,23 @@ namespace Http2.DotNetCore
             }
         }
 
+        private static void PrintCurlInfo()
+        {
+            Console.WriteLine("Features: ");
+            var features = GetSupportedFeatures();
+            Console.WriteLine(Enum.Format(typeof(CurlFeatures), features, "G"));
+            Console.WriteLine(Convert.ToString((int) features, 2).PadLeft(32, '0'));
+            foreach (var value in Enum.GetValues(typeof(CurlFeatures)))
+            {
+                var casted = (CurlFeatures) (value);
+                Console.WriteLine($"{Enum.GetName(typeof(CurlFeatures), value)}: {(features&casted) == casted}");
+            }
+            Console.WriteLine();
+            Console.WriteLine();
+
+            Console.WriteLine($"GetSupportsHttp2Multiplexing: {GetSupportsHttp2Multiplexing()}");
+        }
+
         private static void ShowHelp()
         {
             Console.Out.WriteLine(
@@ -110,9 +134,43 @@ namespace Http2.DotNetCore
     server <listen prefix> <response delay ms>
     client 11 <maxConnectionsPerServer> <url> <parallelism>
     client 2 <maxConnectionsPerServer> <url> <parallelism>
-    client default <maxConnectionsPerServer> <url> <parallelism>");
+    client default <maxConnectionsPerServer> <url> <parallelism>
+    curl");
         }
 
         private static readonly CancellationTokenSource cts = new CancellationTokenSource();
+
+
+        [Flags]
+        internal enum CurlFeatures : int
+        {
+            CURL_VERSION_IPV6 = (1 << 0),
+            CURL_VERSION_KERBEROS4 = (1 << 1),
+            CURL_VERSION_SSL = (1 << 2),
+            CURL_VERSION_LIBZ = (1 << 3),
+            CURL_VERSION_NTLM = (1 << 4),
+            CURL_VERSION_GSSNEGOTIATE = (1 << 5),
+            CURL_VERSION_DEBUG = (1 << 6),
+            CURL_VERSION_ASYNCHDNS = (1 << 7),
+            CURL_VERSION_SPNEGO = (1 << 8),
+            CURL_VERSION_LARGEFILE = (1 << 9),
+            CURL_VERSION_IDN = (1 << 10),
+            CURL_VERSION_SSPI = (1 << 11),
+            CURL_VERSION_CONV = (1 << 12),
+            CURL_VERSION_CURLDEBUG = (1 << 13),
+            CURL_VERSION_TLSAUTH_SRP = (1 << 14),
+            CURL_VERSION_NTLM_WB = (1 << 15),
+            CURL_VERSION_HTTP2 = (1 << 16),
+            CURL_VERSION_GSSAPI = (1 << 17),
+            CURL_VERSION_KERBEROS5 = (1 << 18),
+            CURL_VERSION_UNIX_SOCKETS = (1 << 19),
+            CURL_VERSION_PSL = (1 << 20),
+        };
+
+        [DllImport("System.Net.Http.Native", EntryPoint = "HttpNative_GetSupportedFeatures")]
+        internal static extern CurlFeatures GetSupportedFeatures();
+
+        [DllImport("System.Net.Http.Native", EntryPoint = "HttpNative_GetSupportsHttp2Multiplexing")]
+        internal static extern bool GetSupportsHttp2Multiplexing();
     }
 }
